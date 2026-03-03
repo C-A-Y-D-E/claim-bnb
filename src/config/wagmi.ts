@@ -5,6 +5,7 @@ import {
   trustWallet,
   tokenPocketWallet,
   okxWallet,
+  binanceWallet
 
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http } from "wagmi";
@@ -26,7 +27,7 @@ const connectors = connectorsForWallets(
   [
     {
       groupName: "Popular",
-      wallets: [metaMaskWallet, trustWallet, tokenPocketWallet, walletConnectWallet, okxWallet],
+      wallets: [metaMaskWallet, trustWallet, tokenPocketWallet, walletConnectWallet, okxWallet, binanceWallet],
     },
   ],
   { appName: "Token Claim", projectId },
