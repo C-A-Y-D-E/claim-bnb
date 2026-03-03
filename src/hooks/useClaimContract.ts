@@ -139,6 +139,14 @@ export function useClaimTokens() {
   };
 }
 
+export function useTokenAddress() {
+  return useReadContract({
+    ...contractConfig,
+    functionName: "token",
+    query: { enabled: !!TOKEN_CLAIM_ADDRESS },
+  });
+}
+
 // ---- Admin hooks ----
 
 export function useOwner() {
@@ -147,6 +155,59 @@ export function useOwner() {
     functionName: "owner",
     query: { enabled: !!TOKEN_CLAIM_ADDRESS },
   });
+}
+
+export function useSetToken() {
+  const { writeContract, data: hash, isPending, isError: isWriteError, error: writeError, reset } =
+    useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } =
+    useWaitForTransactionReceipt({ hash });
+
+  const setToken = (tokenAddress: `0x${string}`) => {
+    writeContract({
+      ...contractConfig,
+      functionName: "setToken",
+      args: [tokenAddress],
+    });
+  };
+
+  return { setToken, hash, isPending, isConfirming, isConfirmed, isError: isWriteError || isReceiptError, error: writeError || receiptError, reset };
+}
+
+export function useToggleActive() {
+  const { writeContract, data: hash, isPending, isError: isWriteError, error: writeError, reset } =
+    useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } =
+    useWaitForTransactionReceipt({ hash });
+
+  const toggleActive = () => {
+    writeContract({
+      ...contractConfig,
+      functionName: "toggleActive",
+    });
+  };
+
+  return { toggleActive, hash, isPending, isConfirming, isConfirmed, isError: isWriteError || isReceiptError, error: writeError || receiptError, reset };
+}
+
+export function useUpdateClaimAmount() {
+  const { writeContract, data: hash, isPending, isError: isWriteError, error: writeError, reset } =
+    useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } =
+    useWaitForTransactionReceipt({ hash });
+
+  const updateClaimAmount = (newAmount: bigint) => {
+    writeContract({
+      ...contractConfig,
+      functionName: "updateClaimAmount",
+      args: [newAmount],
+    });
+  };
+
+  return { updateClaimAmount, hash, isPending, isConfirming, isConfirmed, isError: isWriteError || isReceiptError, error: writeError || receiptError, reset };
 }
 
 export function useAddToWhitelist() {

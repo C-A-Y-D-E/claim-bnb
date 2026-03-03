@@ -98,6 +98,27 @@ export const tokenClaimAbi = [
     outputs: [],
   },
   {
+    name: "setToken",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_token", type: "address" }],
+    outputs: [],
+  },
+  {
+    name: "toggleActive",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  {
+    name: "updateClaimAmount",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_newAmount", type: "uint256" }],
+    outputs: [],
+  },
+  {
     name: "addToWhitelist",
     type: "function",
     stateMutability: "nonpayable",
@@ -131,6 +152,14 @@ export const tokenClaimAbi = [
     inputs: [
       { name: "claimer", type: "address", indexed: true },
       { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    name: "TokenUpdated",
+    type: "event",
+    inputs: [
+      { name: "oldToken", type: "address", indexed: false },
+      { name: "newToken", type: "address", indexed: false },
     ],
   },
 ] as const;

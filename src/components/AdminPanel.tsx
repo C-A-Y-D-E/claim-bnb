@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { isAddress } from "viem";
+import { isAddress, parseUnits } from "viem";
 import { formatUnits } from "viem";
 import {
   useAddToWhitelist,
@@ -13,6 +13,10 @@ import {
   useClaimAmount,
   useIsWhitelisted,
   useHasClaimed,
+  useTokenAddress,
+  useSetToken,
+  useToggleActive,
+  useUpdateClaimAmount,
 } from "@/hooks/useClaimContract";
 
 const TOKEN_DECIMALS = Number(process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "18");
@@ -72,6 +76,217 @@ function ActionButton({
       )}
       {text}
     </button>
+  );
+}
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+function SetTokenCard() {
+  const [input, setInput] = useState("");
+  const tokenAddress = useTokenAddress();
+  const isActive = useIsActive();
+  const { setToken, isPending, isConfirming, isConfirmed, isError, error, reset } = useSetToken();
+
+  const isValidAddress = input.length > 0 && isAddress(input);
+  const currentToken = tokenAddress.data as string | undefined;
+  const isTokenSet = !!currentToken && currentToken !== ZERO_ADDRESS;
+  const short = isTokenSet ? `${currentToken!.slice(0, 6)}...${currentToken!.slice(-4)}` : null;
+
+  useEffect(() => {
+    if (isConfirmed) {
+      tokenAddress.refetch();
+      setInput("");
+      const timer = setTimeout(() => reset(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfirmed]);
+
+  const handleSubmit = () => {
+    if (!isValidAddress) return;
+    reset();
+    setToken(input as `0x${string}`);
+  };
+
+  return (
+    <div className="rounded-2xl border border-border-subtle bg-bg-card p-6 transition-colors duration-300 hover:border-accent/30">
+      <h3 className="mb-4 font-display text-xl tracking-[4px] text-text-primary uppercase">
+        Token Address
+      </h3>
+      <div className="mb-3 flex items-center gap-2 text-sm">
+        <span className="text-text-muted">Current:</span>
+        {isTokenSet ? (
+          <span className="font-mono text-green-400">{short}</span>
+        ) : (
+          <span className="text-yellow-400">Not Set</span>
+        )}
+      </div>
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="0x..."
+        className="mb-3 w-full rounded-lg bg-white/5 px-4 py-3 text-sm text-text-primary placeholder-text-muted/50 border border-border-subtle focus:border-accent/40 focus:outline-none font-mono"
+      />
+      <ActionButton
+        onClick={handleSubmit}
+        disabled={!isValidAddress || !!isActive.data}
+        isPending={isPending}
+        isConfirming={isConfirming}
+        isConfirmed={isConfirmed}
+        isError={isError}
+        label="Set Token"
+      />
+      {isActive.data && (
+        <p className="mt-2 text-xs text-yellow-400">Deactivate contract first to change token.</p>
+      )}
+      {isError && (
+        <p className="mt-3 text-sm text-red-400">
+          {(error as Error)?.message?.includes("User rejected")
+            ? "Transaction rejected."
+            : (error as Error)?.message?.includes("ContractIsActive")
+              ? "Deactivate contract first."
+              : "Transaction failed. Please try again."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function UpdateClaimAmountCard() {
+  const [input, setInput] = useState("");
+  const claimAmount = useClaimAmount();
+  const { updateClaimAmount, isPending, isConfirming, isConfirmed, isError, error, reset } = useUpdateClaimAmount();
+
+  const parsedAmount = (() => {
+    try {
+      if (!input || Number(input) <= 0) return null;
+      return parseUnits(input, TOKEN_DECIMALS);
+    } catch {
+      return null;
+    }
+  })();
+
+  useEffect(() => {
+    if (isConfirmed) {
+      claimAmount.refetch();
+      setInput("");
+      const timer = setTimeout(() => reset(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfirmed]);
+
+  const handleSubmit = () => {
+    if (!parsedAmount) return;
+    reset();
+    updateClaimAmount(parsedAmount);
+  };
+
+  return (
+    <div className="rounded-2xl border border-border-subtle bg-bg-card p-6 transition-colors duration-300 hover:border-accent/30">
+      <h3 className="mb-4 font-display text-xl tracking-[4px] text-text-primary uppercase">
+        Claim Amount
+      </h3>
+      <div className="mb-3 flex items-center gap-2 text-sm">
+        <span className="text-text-muted">Current:</span>
+        <span className={claimAmount.data && claimAmount.data > BigInt(0) ? "text-green-400" : "text-yellow-400"}>
+          {claimAmount.data !== undefined
+            ? claimAmount.data > BigInt(0)
+              ? `${formatBigInt(claimAmount.data, TOKEN_DECIMALS)} ${TOKEN_SYMBOL}`
+              : "Not Set"
+            : "—"}
+        </span>
+      </div>
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder={`e.g. 100000`}
+        className="mb-3 w-full rounded-lg bg-white/5 px-4 py-3 text-sm text-text-primary placeholder-text-muted/50 border border-border-subtle focus:border-accent/40 focus:outline-none font-mono"
+      />
+      <p className="mb-3 text-xs text-text-muted">Enter amount without decimals (e.g. 100000 = 100,000 {TOKEN_SYMBOL})</p>
+      <ActionButton
+        onClick={handleSubmit}
+        disabled={!parsedAmount}
+        isPending={isPending}
+        isConfirming={isConfirming}
+        isConfirmed={isConfirmed}
+        isError={isError}
+        label="Update Claim Amount"
+      />
+      {isError && (
+        <p className="mt-3 text-sm text-red-400">
+          {(error as Error)?.message?.includes("User rejected")
+            ? "Transaction rejected."
+            : "Transaction failed. Please try again."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ToggleActiveCard() {
+  const isActive = useIsActive();
+  const tokenAddress = useTokenAddress();
+  const claimAmount = useClaimAmount();
+  const { toggleActive, isPending, isConfirming, isConfirmed, isError, error, reset } = useToggleActive();
+
+  const currentToken = tokenAddress.data as string | undefined;
+  const isTokenSet = !!currentToken && currentToken !== ZERO_ADDRESS;
+  const isAmountSet = !!claimAmount.data && claimAmount.data > BigInt(0);
+  const canActivate = isTokenSet && isAmountSet;
+
+  useEffect(() => {
+    if (isConfirmed) {
+      isActive.refetch();
+      const timer = setTimeout(() => reset(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfirmed]);
+
+  const handleToggle = () => {
+    reset();
+    toggleActive();
+  };
+
+  const active = !!isActive.data;
+
+  return (
+    <div className="rounded-2xl border border-border-subtle bg-bg-card p-6 transition-colors duration-300 hover:border-accent/30">
+      <h3 className="mb-4 font-display text-xl tracking-[4px] text-text-primary uppercase">
+        Contract Status
+      </h3>
+      <div className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold">
+        <span className={`h-3 w-3 rounded-full ${active ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
+        <span className={active ? "text-green-400" : "text-red-400"}>
+          {active ? "Active" : "Inactive"}
+        </span>
+      </div>
+      {!active && !canActivate && (
+        <p className="mb-3 text-center text-xs text-yellow-400">
+          Set token address and claim amount before activating.
+        </p>
+      )}
+      <ActionButton
+        onClick={handleToggle}
+        disabled={!active && !canActivate}
+        isPending={isPending}
+        isConfirming={isConfirming}
+        isConfirmed={isConfirmed}
+        isError={isError}
+        label={active ? "Deactivate" : "Activate"}
+      />
+      {isError && (
+        <p className="mt-3 text-sm text-red-400">
+          {(error as Error)?.message?.includes("User rejected")
+            ? "Transaction rejected."
+            : (error as Error)?.message?.includes("TokenNotSet")
+              ? "Token address must be set first."
+              : (error as Error)?.message?.includes("ClaimAmountNotSet")
+                ? "Claim amount must be set first."
+                : "Transaction failed. Please try again."}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -348,21 +563,11 @@ export function AdminPanel() {
         ))}
       </div>
 
-      {/* Status Row */}
-      <div className="flex items-center justify-center gap-4 text-sm">
-        <span className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 rounded-full ${isActive.data ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
-          />
-          {isActive.data ? "Claiming Active" : "Claiming Paused"}
-        </span>
-        <span className="text-text-muted">
-          Claim Amount:{" "}
-          {claimAmount.data !== undefined
-            ? formatBigInt(claimAmount.data, TOKEN_DECIMALS)
-            : "—"}{" "}
-          {TOKEN_SYMBOL}
-        </span>
+      {/* Contract Configuration */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <SetTokenCard />
+        <UpdateClaimAmountCard />
+        <ToggleActiveCard />
       </div>
 
       {/* Action Cards */}
