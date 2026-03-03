@@ -1,6 +1,14 @@
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { connectorsForWallets } from "@rainbow-me/rainbowkit";
+import {
+  metaMaskWallet,
+  walletConnectWallet,
+  trustWallet,
+  tokenPocketWallet,
+  okxWallet,
+
+} from "@rainbow-me/rainbowkit/wallets";
+import { createConfig, http } from "wagmi";
 import { bsc, bscTestnet, mainnet } from "wagmi/chains";
-import { http } from "wagmi";
 
 const chainMap = {
   1: mainnet,
@@ -12,9 +20,20 @@ const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "56");
 const activeChain =
   chainMap[chainId as keyof typeof chainMap] || bsc;
 
-export const config = getDefaultConfig({
-  appName: "Token Claim",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "";
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: "Popular",
+      wallets: [metaMaskWallet, trustWallet, tokenPocketWallet, walletConnectWallet, okxWallet],
+    },
+  ],
+  { appName: "Token Claim", projectId },
+);
+
+export const config = createConfig({
+  connectors,
   chains: [activeChain],
   transports: {
     [activeChain.id]: http(),
